@@ -1,0 +1,1941 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Schéma Réseau</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+</head>
+
+<body>
+  <div id="loginScreen">
+    <div class="loginBox">
+      <h2>Mot de passe</h2>
+      <input id="passwordInput" type="password" placeholder="Mot de passe">
+      <label class="showPassword">
+        <input id="showPasswordInput" type="checkbox">
+        Afficher le mot de passe
+      </label>
+      <button id="loginBtn">Ouvrir le schéma</button>
+      <button id="changePasswordBtn">Changer le mot de passe</button>
+      <p id="loginMessage"></p>
+    </div>
+  </div>
+
+  <div id="changePasswordBox">
+    <div class="loginBox">
+      <h2>Changer le mot de passe</h2>
+      <button id="sendCodeBtn">Envoyer le code de vérification</button>
+      <input id="codeInput" placeholder="Code de vérification">
+      <input id="newPasswordInput" type="password" placeholder="Nouveau mot de passe">
+      <label class="showPassword">
+        <input id="showNewPasswordInput" type="checkbox">
+        Afficher le nouveau mot de passe
+      </label>
+      <button id="savePasswordBtn">Enregistrer le nouveau mot de passe</button>
+      <button id="cancelChangeBtn">Annuler</button>
+      <p id="changeMessage"></p>
+    </div>
+  </div>
+
+  <div id="editToolbar">
+  <button id="addPcBtn">Ajouter UC</button>
+  <button id="addSwitchBtn">Ajouter switch</button>
+  <button id="cancelEditBtn">Fermer</button>
+  <div id="searchBox">
+    <input id="searchInput" placeholder="Rechercher par ID ou nom ou IP">
+    <button id="searchBtn">Rechercher</button>
+  </div>
+  <button id="saveAllBtn">Enregistrer</button>
+</div>
+<div id="deviceForm">
+  <h2 id="formTitle">Ajouter un équipement</h2>
+
+  <div id="pcIdRow" class="form-group">
+    <label class="field-label">ID :</label>
+    <div id="pcIdBox" class="idBox">
+      <span class="prefix">UC : </span>
+      <input type="text" id="pcNumberInput" placeholder="000">
+    </div>
+  </div>
+
+  <div id="switchIdRow" class="form-group">
+    <label class="field-label">ID :</label>
+    <div id="switchIdBox" class="idBox">
+      <span class="prefix">switch SW : </span>
+      <input type="text" id="switchNumberInput" placeholder="000">
+      <span>:</span>
+      <input type="text" id="switchModelInput" placeholder="HP ARUBA">
+    </div>
+  </div>
+
+  <input id="deviceNameInput" placeholder="Nom">
+  <input id="deviceIpInput" placeholder="Adresse IP">
+
+  <div id="switchCableOptions" style="display:none;">
+    <select id="switchLinkedInput">
+      <option value="">Switch lié automatique</option>
+    </select>
+
+    <div class="radioLine">
+      <label>
+        <input type="radio" name="switchCableType" value="reseau" checked>
+        Câble réseau
+      </label>
+
+      <label>
+        <input type="radio" name="switchCableType" value="fibre">
+        Câble fibre
+      </label>
+    </div>
+  </div>
+
+  <select id="deviceSwitchIdInput">
+    <option value="">Choisir le switch lié</option>
+  </select>
+
+  <input id="deviceSwitchIpInput" placeholder="IP du switch lié" readonly>
+
+  <p id="placementMessage">Remplissez le formulaire, puis cliquez sur l’emplacement.</p>
+  <p id="deviceFormMessage"></p>
+
+  <button id="saveDeviceBtn">Enregistrer l’équipement</button>
+  <button id="closeDeviceFormBtn">Annuler</button>
+</div>
+  
+  <div id="viewer">
+    <div id="svgContainer"></div>
+  </div>
+
+  <div id="cursorPreview">
+    <img id="cursorPreviewImage" src="">
+    <span id="cursorPreviewText"></span>
+  </div>
+
+  <div id="popup">
+    <button id="closePopup">&times;</button>
+    <div id="popupContent"></div>
+  </div>
+<div id="messageModal">
+  <div id="messageBox">
+    <h2 id="messageTitle">Information</h2>
+    <p id="messageText"></p>
+    <button id="messageOkBtn">OK</button>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCq6YKx24QiFIsWs0nOfQSx-xFhcpsdbjc",
+  authDomain: "schema-reseau.firebaseapp.com",
+  databaseURL: "https://schema-reseau-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "schema-reseau",
+  storageBucket: "schema-reseau.firebasestorage.app",
+  messagingSenderId: "669008006699",
+  appId: "1:669008006699:web:0fa8ece04798a8a66ae46e"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const database = firebase.database();
+const passwordRef = database.ref("settings/password");
+const customDevicesRef = database.ref("customDevices");
+const deviceOverridesRef = database.ref("deviceOverrides");
+const messageModal = document.getElementById("messageModal");
+const messageTitle = document.getElementById("messageTitle");
+const messageText = document.getElementById("messageText");
+const messageOkBtn = document.getElementById("messageOkBtn");
+const svgContainer = document.getElementById("svgContainer");
+const popup = document.getElementById("popup");
+const popupContent = document.getElementById("popupContent");
+const closePopup = document.getElementById("closePopup");
+
+const addPcBtn = document.getElementById("addPcBtn");
+const addSwitchBtn = document.getElementById("addSwitchBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+const switchCableOptions = document.getElementById("switchCableOptions");
+const switchLinkedInput = document.getElementById("switchLinkedInput");
+const cursorPreview = document.getElementById("cursorPreview");
+const cursorPreviewImage = document.getElementById("cursorPreviewImage");
+const cursorPreviewText = document.getElementById("cursorPreviewText");
+const pcIdRow = document.getElementById("pcIdRow");
+const switchIdRow = document.getElementById("switchIdRow");
+const deviceForm = document.getElementById("deviceForm");
+const formTitle = document.getElementById("formTitle");
+const pcIdBox = document.getElementById("pcIdBox");
+const switchIdBox = document.getElementById("switchIdBox");
+const pcNumberInput = document.getElementById("pcNumberInput");
+const switchNumberInput = document.getElementById("switchNumberInput");
+const switchModelInput = document.getElementById("switchModelInput");
+const deviceFormMessage = document.getElementById("deviceFormMessage");
+const deviceNameInput = document.getElementById("deviceNameInput");
+const deviceIpInput = document.getElementById("deviceIpInput");
+const deviceSwitchIdInput = document.getElementById("deviceSwitchIdInput");
+const deviceSwitchIpInput = document.getElementById("deviceSwitchIpInput");
+const saveDeviceBtn = document.getElementById("saveDeviceBtn");
+const closeDeviceFormBtn = document.getElementById("closeDeviceFormBtn");
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const saveAllBtn = document.getElementById("saveAllBtn");
+let deviceOverridesCache = {};
+let pendingCustomDevices = {};
+let pendingOverrides = {};
+let pendingDeletes = [];
+let editMode = "";
+let selectedPosition = null;
+let customLayer = null;
+let pendingDevice = null;
+let currentSelectedDevice = null;
+let allDevices = [];
+let allEdges = [];
+let customDevicesCache = {};
+let movingDevice = null;
+pcNumberInput.addEventListener("input", () => {
+  pcNumberInput.value = pcNumberInput.value.replace(/^UC/i, "").trimStart();
+});
+
+switchNumberInput.addEventListener("input", () => {
+  switchNumberInput.value = switchNumberInput.value
+    .replace(/^switch\s*SW/i, "")
+    .replace(/^SW/i, "")
+    .replace(/:/g, "")
+    .trimStart();
+});
+function getSelectedSwitchCableType() {
+  const selected = document.querySelector('input[name="switchCableType"]:checked');
+  return selected ? selected.value : "reseau";
+}
+function fillSwitchLinkedInput() {
+  switchLinkedInput.innerHTML = `<option value="">Switch lié automatique</option>`;
+
+  const originalSwitches = allDevices
+    .map(getDeviceWithOverride)
+    .filter(device => !device.hidden)
+    .filter(device => device.id.toLowerCase().includes("switch"))
+    .map(device => ({
+      id: device.id,
+      ip: device.ip || ""
+    }));
+
+  const customSwitches = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => device.type === "switch")
+    .filter(device => !device.hidden)
+    .filter(device => !pendingDeletes.includes(device.id))
+    .map(device => ({
+      id: device.id,
+      ip: device.ip || ""
+    }));
+
+  const switches = [...originalSwitches, ...customSwitches];
+
+  switches.forEach(sw => {
+    const option = document.createElement("option");
+    option.value = sw.id;
+    option.textContent = sw.id;
+    option.dataset.ip = sw.ip;
+    switchLinkedInput.appendChild(option);
+  });
+}
+saveAllBtn.addEventListener("click", saveAllChanges);
+async function saveAllChanges() {
+  const updates = {};
+
+  Object.entries(pendingCustomDevices).forEach(([id, device]) => {
+    updates[`customDevices/${id}`] = device;
+  });
+
+  Object.entries(pendingOverrides).forEach(([id, device]) => {
+    updates[`deviceOverrides/${id}`] = device;
+  });
+
+  pendingDeletes.forEach(id => {
+    updates[`customDevices/${id}`] = null;
+  });
+
+  console.log("updates to save:", updates);
+
+  if (!Object.keys(updates).length) {
+    showMessage("Information", "Aucune modification à enregistrer.");
+    return;
+  }
+
+  try {
+    removeUndefinedValues(updates);
+    await database.ref().update(updates);
+
+    pendingCustomDevices = {};
+    pendingOverrides = {};
+    pendingDeletes = [];
+
+    showMessage("Succès", "Modifications enregistrées avec succès.");
+  } catch (error) {
+    console.error(error);
+    showMessage("Erreur", "Impossible d’enregistrer les modifications.");
+  }
+}
+function removeUndefinedValues(object) {
+  Object.keys(object).forEach(key => {
+    if (object[key] === undefined) {
+      object[key] = "";
+    }
+
+    if (object[key] && typeof object[key] === "object") {
+      removeUndefinedValues(object[key]);
+    }
+  });
+}
+function loadDeviceOverrides() {
+  deviceOverridesRef.on("value", snapshot => {
+    deviceOverridesCache = snapshot.val() || {};
+    redrawOriginalDevicesVisibility();
+    redrawCustomLayer();
+  });
+}
+addPcBtn.addEventListener("click", () => openDeviceForm("pc"));
+addSwitchBtn.addEventListener("click", () => openDeviceForm("switch"));
+cancelEditBtn.addEventListener("click", () => {
+  cancelEditMode();
+  clearSearchHighlight();
+  searchInput.value = "";
+  closepanel();
+});
+closeDeviceFormBtn.addEventListener("click", cancelEditMode);
+saveDeviceBtn.addEventListener("click", saveCustomDevice);
+function showMessage(title, text) {
+  messageTitle.textContent = title;
+  messageText.textContent = text;
+  messageModal.style.display = "flex";
+}
+function showConfirmMessage(title, text, onConfirm) {
+  messageTitle.textContent = title;
+  messageText.textContent = text;
+  messageModal.style.display = "flex";
+
+  messageOkBtn.textContent = "Confirmer";
+
+  const oldCancelBtn = document.getElementById("messageCancelBtn");
+  if (oldCancelBtn) oldCancelBtn.remove();
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.id = "messageCancelBtn";
+  cancelBtn.textContent = "Annuler";
+  cancelBtn.style.marginLeft = "8px";
+  cancelBtn.style.padding = "10px 18px";
+  cancelBtn.style.border = "none";
+  cancelBtn.style.borderRadius = "7px";
+  cancelBtn.style.background = "#80a4c9";
+  cancelBtn.style.cursor = "pointer";
+
+  messageOkBtn.after(cancelBtn);
+
+  const cleanModal = () => {
+    messageModal.style.display = "none";
+    messageOkBtn.textContent = "OK";
+    cancelBtn.remove();
+    messageOkBtn.onclick = null;
+  };
+
+  messageOkBtn.onclick = async () => {
+    await onConfirm();
+    cleanModal();
+  };
+
+  cancelBtn.onclick = cleanModal;
+}
+messageOkBtn.addEventListener("click", () => {
+  messageModal.style.display = "none";
+  messageOkBtn.textContent = "OK";
+
+  const cancelBtn = document.getElementById("messageCancelBtn");
+  if (cancelBtn) cancelBtn.remove();
+});
+function isDeletedOrHiddenSwitch(switchId) {
+  if (!switchId) return true;
+
+  if (isSpecialIsolatedSwitch(switchId)) {
+    return false;
+  }
+
+  const customDevices = {
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  };
+
+  pendingDeletes.forEach(id => {
+    delete customDevices[id];
+  });
+
+  const movedOrCustomSwitch = Object.values(customDevices).find(device =>
+    device.type === "switch" &&
+    sameSwitchName(device.id, switchId) &&
+    !device.hidden
+  );
+
+  if (movedOrCustomSwitch) {
+    return false;
+  }
+
+  const originalSwitch = allDevices.find(device =>
+    sameSwitchName(device.id, switchId)
+  );
+
+  if (originalSwitch && getDeviceWithOverride(originalSwitch).hidden) {
+    return true;
+  }
+
+  const directCustomSwitch = customDevices[switchId];
+
+  if (directCustomSwitch && directCustomSwitch.hidden) {
+    return true;
+  }
+
+  return false;
+}
+function fillSwitchDropdown() {
+  deviceSwitchIdInput.innerHTML = `<option value="">Choisir le switch lié</option>`;
+
+  const originalSwitches = allDevices
+    .map(getDeviceWithOverride)
+    .filter(device => !device.hidden)
+    .filter(device => device.id.toLowerCase().includes("switch"))
+    .map(device => ({
+      id: device.id,
+      ip: device.ip || ""
+    }));
+
+  const customSwitches = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => device.type === "switch")
+    .filter(device => !device.hidden)
+    .filter(device => !pendingDeletes.includes(device.id))
+    .map(device => ({
+      id: device.id,
+      ip: device.ip || ""
+    }));
+
+  const allSwitches = [...originalSwitches, ...customSwitches];
+
+  allSwitches.forEach(sw => {
+    const option = document.createElement("option");
+    option.value = sw.id;
+    option.textContent = sw.id;
+    option.dataset.ip = sw.ip;
+    deviceSwitchIdInput.appendChild(option);
+  });
+}
+deviceSwitchIdInput.addEventListener("change", () => {
+  const selectedOption = deviceSwitchIdInput.selectedOptions[0];
+
+  if (!selectedOption || !selectedOption.value) {
+    deviceSwitchIpInput.value = "";
+    return;
+  }
+
+  deviceSwitchIpInput.value = selectedOption.dataset.ip || "";
+});
+function showFormError(message) {
+  deviceFormMessage.textContent = message;
+}
+
+function clearFormError() {
+  deviceFormMessage.textContent = "";
+}
+
+function openDeviceForm(type) {
+  editMode = type;
+  selectedPosition = null;
+  pendingDevice = null;
+  currentSelectedDevice = null;
+  clearFormError();
+
+  formTitle.textContent = type === "pc" ? "Ajouter un PC" : "Ajouter un switch";
+  deviceForm.style.display = "block";
+
+  deviceNameInput.style.display = type === "switch" ? "none" : "block";
+
+ if (type === "pc") {
+  deviceSwitchIdInput.style.display = "block";
+  deviceSwitchIpInput.style.display = "block";
+  switchCableOptions.style.display = "none";
+}
+
+if (type === "switch") {
+  deviceSwitchIdInput.style.display = "none";
+  deviceSwitchIpInput.style.display = "none";
+  switchCableOptions.style.display = "block";
+  fillSwitchLinkedInput();
+
+  document.querySelector('input[name="switchCableType"][value="reseau"]').checked = true;
+}
+if (type === "pc") {
+  pcIdRow.style.display = "flex";
+  switchIdRow.style.display = "none";
+}
+
+if (type === "switch") {
+  pcIdRow.style.display = "none";
+  switchIdRow.style.display = "flex";
+}
+pcIdBox.style.display = "flex";
+switchIdBox.style.display = "flex";
+
+  pcNumberInput.value = "";
+  switchNumberInput.value = "";
+  switchModelInput.value = "";
+  deviceNameInput.value = "";
+  deviceIpInput.value = "";
+  deviceSwitchIdInput.value = "";
+  deviceSwitchIpInput.value = "";
+  switchLinkedInput.value = "";
+
+  fillSwitchDropdown();
+}
+searchBtn.addEventListener("click", searchEquipment);
+
+searchInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    searchEquipment();
+  }
+});
+function searchEquipment() {
+  const text = normalizeSearchText(searchInput.value);
+
+  if (!text) {
+    showMessage("Recherche", "Veuillez saisir un ID, un nom ou une IP.");
+    return;
+  }
+
+  clearSearchHighlight();
+
+  const originalResults = allDevices
+  .map(getDeviceWithOverride)
+  .filter(device => !device.hidden)
+  .filter(device => {
+    const id = normalizeSearchText(device.id);
+    const name = normalizeSearchText(device.name);
+    const ip = normalizeSearchText(device.ip);
+    const switchIp = normalizeSearchText(device.switchIp);
+
+    return id.includes(text) ||
+      name.includes(text) ||
+      ip.includes(text) ||
+      switchIp.includes(text);
+  });
+
+  const customResults = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => !pendingDeletes.includes(device.id))
+    .filter(device => {
+      const id = normalizeSearchText(device.id);
+      const name = normalizeSearchText(device.name);
+      const ip = normalizeSearchText(device.ip);
+      const switchIp = normalizeSearchText(device.switchIp);
+
+      return id.includes(text) ||
+        name.includes(text) ||
+        ip.includes(text) ||
+        switchIp.includes(text);
+    });
+
+  const total = originalResults.length + customResults.length;
+
+  if (!total) {
+    showMessage("Recherche", "Aucun équipement trouvé.");
+    return;
+  }
+
+  originalResults.forEach(highlightOriginalDevice);
+  customResults.forEach(highlightCustomDevice);
+
+  const firstDevice = originalResults[0] || customResults[0];
+
+  details({
+    ...firstDevice,
+    isCustom: Boolean(firstDevice.type)
+  });
+}
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "")
+    .replaceAll("-", "")
+    .replaceAll("_", "")
+    .replaceAll(":", "");
+}
+function clearSearchHighlight() {
+  document.querySelectorAll(".search-highlight").forEach(element => {
+    element.classList.remove("search-highlight");
+  });
+
+  if (customLayer) {
+    customLayer.querySelectorAll(".search-highlight-svg").forEach(element => {
+      element.remove();
+    });
+  }
+}
+
+function highlightOriginalDevice(device) {
+  const svg = svgContainer.querySelector("svg");
+  if (!svg || !customLayer) return;
+
+  const shape = svg.querySelector(`[data-cell-id="${cssspace(device.id)}"]`);
+  if (!shape) return;
+
+  const box = shape.getBBox();
+
+  const marker = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  marker.setAttribute("class", "search-highlight-svg");
+  marker.setAttribute("x", box.x - 6);
+  marker.setAttribute("y", box.y - 6);
+  marker.setAttribute("width", box.width + 10);
+  marker.setAttribute("height", box.height + 10);
+  marker.setAttribute("rx", 6);
+  marker.setAttribute("fill", "none");
+  marker.setAttribute("stroke", "#80a4c9");
+  marker.setAttribute("stroke-width", "4");
+
+  customLayer.appendChild(marker);
+
+  const viewer = document.getElementById("viewer");
+  viewer.scrollTo({
+    left: Math.max(0, box.x - viewer.clientWidth / 2),
+    top: Math.max(0, box.y - viewer.clientHeight / 2),
+    behavior: "smooth"
+  });
+}
+function highlightCustomDevice(device) {
+  if (!customLayer) return;
+
+  const isSwitch = device.type === "switch";
+  const width = isSwitch ? 60 : 15;
+  const height = isSwitch ? 42 : 15;
+
+  const marker = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+
+  marker.setAttribute("class", "search-highlight-svg");
+  marker.setAttribute("x", Number(device.x) - width / 2 - 6);
+  marker.setAttribute("y", Number(device.y) - height / 2 - 6);
+  marker.setAttribute("width", width + 10);
+  marker.setAttribute("height", height + 10);
+  marker.setAttribute("rx", 6);
+  marker.setAttribute("fill", "none");
+  marker.setAttribute("stroke", "#80a4c9");
+  marker.setAttribute("stroke-width", "4");
+
+  customLayer.appendChild(marker);
+}
+function cancelEditMode() {
+  editMode = "";
+  selectedPosition = null;
+  pendingDevice = null;
+  deviceForm.style.display = "none";
+  hideCursorPreview();
+}
+
+closePopup.addEventListener("click", closepanel);
+emailjs.init("M10lGyAxrP5noKBHq");
+
+let verificationCode = "";
+
+async function getSharedPassword() {
+  const snapshot = await passwordRef.get();
+
+  if (!snapshot.exists()) {
+    await passwordRef.set("1234");
+    return "1234";
+  }
+
+  return snapshot.val();
+}
+
+async function saveSharedPassword(newPassword) {
+  await passwordRef.set(newPassword);
+}
+
+const loginScreen = document.getElementById("loginScreen");
+const changePasswordBox = document.getElementById("changePasswordBox");
+const editToolbar = document.getElementById("editToolbar");
+const passwordInput = document.getElementById("passwordInput");
+const showPasswordInput = document.getElementById("showPasswordInput");
+
+showPasswordInput.addEventListener("change", () => {
+  passwordInput.type = showPasswordInput.checked ? "text" : "password";
+});
+
+const loginBtn = document.getElementById("loginBtn");
+const changePasswordBtn = document.getElementById("changePasswordBtn");
+const loginMessage = document.getElementById("loginMessage");
+
+const sendCodeBtn = document.getElementById("sendCodeBtn");
+const codeInput = document.getElementById("codeInput");
+const newPasswordInput = document.getElementById("newPasswordInput");
+const showNewPasswordInput = document.getElementById("showNewPasswordInput");
+
+showNewPasswordInput.addEventListener("change", () => {
+  newPasswordInput.type = showNewPasswordInput.checked ? "text" : "password";
+});
+
+const savePasswordBtn = document.getElementById("savePasswordBtn");
+const cancelChangeBtn = document.getElementById("cancelChangeBtn");
+const changeMessage = document.getElementById("changeMessage");
+
+loginBtn.addEventListener("click", checkPassword);
+passwordInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") checkPassword();
+});
+
+changePasswordBtn.addEventListener("click", () => {
+  changePasswordBox.style.display = "flex";
+});
+
+cancelChangeBtn.addEventListener("click", () => {
+  changePasswordBox.style.display = "none";
+});
+
+async function checkPassword() {
+  const currentPassword = await getSharedPassword();
+
+  if (passwordInput.value === currentPassword) {
+    loginScreen.style.display = "none";
+    editToolbar.style.display = "flex";
+  } else {
+    loginMessage.textContent = "Mot de passe incorrect.";
+  }
+}
+
+sendCodeBtn.addEventListener("click", () => {
+  verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+  emailjs.send("schema reseau", "template_59zbc7b", {
+    to_email: "informatique@gaaliche.com",
+    code: verificationCode
+  }).then(() => {
+    changeMessage.textContent = "Code de vérification envoyé à informatique@gaaliche.com.";
+  }).catch(error => {
+    console.error(error);
+    changeMessage.textContent = "Impossible d’envoyer l’email.";
+  });
+});
+
+savePasswordBtn.addEventListener("click", async () => {
+  if (codeInput.value !== verificationCode) {
+    changeMessage.textContent = "Code de vérification incorrect.";
+    return;
+  }
+
+  if (!newPasswordInput.value) {
+    changeMessage.textContent = "Veuillez saisir un nouveau mot de passe.";
+    return;
+  }
+
+  await saveSharedPassword(newPasswordInput.value);
+
+  changeMessage.textContent = "Mot de passe changé.";
+  changePasswordBox.style.display = "none";
+});
+
+getdiag();
+
+async function getdiag() {
+  const svgText = await fetch("diagram.svg").then(response => response.text());
+  const drawioData = getinfo(svgText);
+
+  svgContainer.innerHTML = svgText;
+
+  const svg = svgContainer.querySelector("svg");
+
+  if (!svg) {
+    alert("Impossible de charger diagram.svg");
+    return;
+  }
+
+  if (!drawioData) {
+    alert("Impossible de trouver les données dans le schéma.");
+    return;
+  }
+
+  const devices = getdevices(drawioData);
+  allEdges = getedges(drawioData);
+ removeOnlyBlackOriginalWires(svg);
+  allDevices = devices;
+redrawOriginalDevicesVisibility();
+svgdevices(svg, devices);
+redrawOriginalDevicesVisibility();
+  fillSwitchDropdown();
+  createCustomLayer(svg);
+  loadCustomDevices();
+  loadDeviceOverrides();
+  enablePlacementClick(svg);
+}
+function removeOnlyBlackOriginalWires(svg) {
+  allEdges.forEach(edge => {
+    const edgeElements = svg.querySelectorAll(`[data-cell-id="${cssspace(edge.id)}"]`);
+
+    edgeElements.forEach(element => {
+      const blackParts = element.querySelectorAll(
+        `path[stroke="#000000"],
+         path[stroke="black"],
+         path[stroke="#000"],
+         line[stroke="#000000"],
+         line[stroke="black"],
+         line[stroke="#000"]`
+      );
+
+      if (blackParts.length > 0) {
+        element.remove();
+      }
+    });
+  });
+}
+function createCustomLayer(svg) {
+  customLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+  const width = svg.getAttribute("width") || svg.viewBox.baseVal.width;
+  const height = svg.getAttribute("height") || svg.viewBox.baseVal.height;
+  const viewBox = svg.getAttribute("viewBox");
+
+  customLayer.setAttribute("id", "customLayer");
+  customLayer.setAttribute("width", width);
+  customLayer.setAttribute("height", height);
+
+  if (viewBox) {
+    customLayer.setAttribute("viewBox", viewBox);
+  }
+
+  svgContainer.appendChild(customLayer);
+}
+
+function enablePlacementClick(svg) {
+  svg.addEventListener("click", event => {
+    if (!pendingDevice && !movingDevice) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    const point = getSvgPoint(svg, event);
+
+    if (movingDevice) {
+  const movedDevice = {
+    ...movingDevice,
+    x: point.x,
+    y: point.y,
+    type: movingDevice.type,
+    isCustom: true
+  };
+
+  pendingCustomDevices[movedDevice.id] = movedDevice;
+
+  if (movedDevice.originalId) {
+    pendingOverrides[movedDevice.originalId] = {
+      ...(pendingOverrides[movedDevice.originalId] || {}),
+      ...movedDevice,
+      id: movedDevice.originalId,
+      hidden: true
+    };
+
+    hideConnectedWires(movedDevice.originalId);
+  }
+
+  movingDevice = null;
+  hideCursorPreview();
+
+  redrawOriginalDevicesVisibility();
+  redrawCustomLayer();
+
+  showMessage("Déplacement", "Nouvelle position prête. Cliquez sur Enregistrer pour sauvegarder.");
+  return;
+}
+
+    pendingDevice.x = point.x;
+    pendingDevice.y = point.y;
+
+    pendingCustomDevices[pendingDevice.id] = pendingDevice;
+
+    pendingDevice = null;
+    hideCursorPreview();
+    cancelEditMode();
+    redrawCustomLayer();
+
+    showMessage("Succès", "Équipement ajouté. Cliquez sur Enregistrer pour sauvegarder.");
+  }, true);
+}
+function redrawCustomLayer() {
+  if (!customLayer) return;
+
+  customLayer.innerHTML = "";
+
+  const devices = {
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  };
+
+  pendingDeletes.forEach(id => {
+    delete devices[id];
+  });
+
+  Object.values(devices).forEach(device => {
+    if (device.hidden) return;
+    drawCustomDevice(device);
+  });
+
+  drawOverrideLines();
+  fillSwitchDropdown();
+}
+function getSvgPoint(svg, event) {
+  const point = svg.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+
+  return point.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function svgdevices(svg, devices) {
+  let connected = 0;
+
+  devices.forEach(device => {
+    if (getDeviceWithOverride(device).hidden) return;
+    const type = svg.querySelector(`[data-cell-id="${cssspace(device.id)}"]`);
+
+    if (!type) return;
+
+    connected++;
+
+    type.style.cursor = "pointer";
+    type.style.pointerEvents = "all";
+
+    type.addEventListener("click", event => {
+      event.stopPropagation();
+      cleardevice();
+      type.classList.add("selected-device");
+      details(getDeviceWithOverride(device));
+    });
+  });
+
+  console.log("Équipements trouvés :", devices.length);
+  console.log("Équipements cliquables :", connected);
+}
+function getDeviceWithOverride(device) {
+  const savedOverride = deviceOverridesCache[device.id] || {};
+  const pendingOverride = pendingOverrides[device.id] || {};
+
+  return {
+    ...device,
+    ...savedOverride,
+    ...pendingOverride,
+    originalId: device.id,
+    id: savedOverride.id || pendingOverride.id || device.id,
+    isCustom: false
+  };
+}
+function getinfo(svgText) {
+  const match = svgText.match(/\scontent="([^"]*)"/);
+
+  if (!match) return "";
+
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = match[1];
+
+  return textarea.value;
+}
+
+function getdevices(drawioData) {
+  const xml = new DOMParser().parseFromString(drawioData, "text/xml");
+
+  if (xml.querySelector("parsererror")) {
+    console.error("Impossible de lire les données.");
+    return [];
+  }
+
+  return [...xml.getElementsByTagName("object")]
+    .map(readdevice)
+    .filter(Boolean);
+}
+function getedges(drawioData) {
+  const xml = new DOMParser().parseFromString(drawioData, "text/xml");
+
+  if (xml.querySelector("parsererror")) {
+    return [];
+  }
+
+  return [...xml.getElementsByTagName("mxCell")]
+    .filter(cell => cell.getAttribute("edge") === "1")
+    .map(cell => ({
+      id: cell.getAttribute("id"),
+      source: cell.getAttribute("source"),
+      target: cell.getAttribute("target")
+    }))
+    .filter(edge => edge.id && edge.source && edge.target);
+}
+
+function readdevice(objectElement) {
+  const type = (objectElement.getAttribute("type") || "").trim().toLowerCase();
+
+  if (type === "legend") return null;
+
+  const id = objectElement.getAttribute("id") || "";
+  const name = objectElement.getAttribute("name") || objectElement.getAttribute("Name") || "";
+  const ip = objectElement.getAttribute("IP") || objectElement.getAttribute("ip") || "";
+  const switchName = objectElement.getAttribute("swname") || "";
+  const switchIp = objectElement.getAttribute("swIP") || objectElement.getAttribute("swip") || "";
+
+  const isComputer = id.toLowerCase().startsWith("uc");
+  const isSwitch = id.toLowerCase().includes("switch");
+
+  if (!isComputer && !isSwitch) return null;
+
+  return {
+    id,
+    name,
+    ip,
+    switchName,
+    switchIp
+  };
+}
+
+function details(device) {
+  currentSelectedDevice = device;
+
+  const isSwitch = device.id.toLowerCase().includes("switch");
+
+  popupContent.innerHTML = isSwitch
+    ? getswdetail(device)
+    : getucdetail(device);
+
+  popupContent.innerHTML += `
+    <button id="editDeviceBtn">Modifier l'équipement</button>
+    <button id="moveDeviceBtn">Changer la place</button>
+  `;
+
+ popupContent.innerHTML += `
+  <button id="deleteDeviceBtn">Supprimer l'équipement</button>
+`;
+
+  document.getElementById("editDeviceBtn").addEventListener("click", () => {
+    openEditDeviceForm(device);
+  });
+
+  document.getElementById("moveDeviceBtn").addEventListener("click", () => {
+    startMoveDevice(device);
+  });
+
+  const deleteBtn = document.getElementById("deleteDeviceBtn");
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", deleteCustomDevice);
+  }
+
+  popup.style.display = "block";
+}
+function startMoveDevice(device) {
+  const originalId = device.originalId || device.id;
+  const isSwitch = originalId.toLowerCase().includes("switch");
+
+  const savedDevice = {
+    ...(customDevicesCache[device.id] || {}),
+    ...(pendingCustomDevices[device.id] || {}),
+    ...device
+  };
+
+  movingDevice = {
+    ...savedDevice,
+    id: savedDevice.id,
+    originalId: originalId,
+    type: isSwitch ? "switch" : "pc",
+    isCustom: Boolean(savedDevice.isCustom)
+  };
+
+  popup.style.display = "none";
+
+  showCursorPreview(movingDevice.type);
+  cursorPreviewText.textContent = movingDevice.type === "switch"
+    ? "Placez le switch"
+    : "Placez le PC";
+
+  showMessage(
+    "Déplacement",
+    movingDevice.type === "switch"
+      ? "Placez le switch dans sa nouvelle position."
+      : "Placez le PC dans sa nouvelle position."
+  );
+}
+function openEditDeviceForm(device) {
+  currentSelectedDevice = device;
+  editMode = device.id.toLowerCase().includes("switch") ? "switch" : "pc";
+
+  formTitle.textContent = "Modifier l’équipement";
+  deviceForm.style.display = "block";
+  switchCableOptions.style.display = "none";
+
+  pcIdBox.closest(".form-group").style.display = "none";
+switchIdBox.closest(".form-group").style.display = "none";
+pcIdRow.style.display = "none";
+switchIdRow.style.display = "none";
+  deviceNameInput.style.display = editMode === "switch" ? "none" : "block";
+
+  deviceNameInput.value = device.name || "";
+  deviceIpInput.value = device.ip || "";
+
+  if (editMode === "pc") {
+    deviceSwitchIdInput.style.display = "block";
+    deviceSwitchIpInput.style.display = "block";
+    deviceSwitchIdInput.value = device.switchName || "";
+    deviceSwitchIpInput.value = device.switchIp || "";
+  }
+
+  if (editMode === "switch") {
+  deviceSwitchIdInput.style.display = "none";
+  deviceSwitchIpInput.style.display = "none";
+
+  if (device.isCustom) {
+    switchCableOptions.style.display = "block";
+    fillSwitchLinkedInput();
+
+    switchLinkedInput.value = device.switchName || "";
+
+    const cableType = device.cableType || "reseau";
+    const radio = document.querySelector(`input[name="switchCableType"][value="${cableType}"]`);
+
+    if (radio) {
+      radio.checked = true;
+    }
+  } else {
+    switchCableOptions.style.display = "none";
+  }
+}
+
+  pendingDevice = null;
+}
+function readSwitchIdParts(id) {
+  const cleaned = String(id || "").replace(/^switch\s*SW/i, "").trim();
+  const parts = cleaned.split(":");
+
+  return {
+    number: (parts[0] || "").trim(),
+    model: (parts.slice(1).join(":") || "").trim()
+  };
+}
+
+function deleteCustomDevice() {
+  if (!currentSelectedDevice) return;
+
+  const deviceToDelete = { ...currentSelectedDevice };
+  const deleteId = deviceToDelete.originalId || deviceToDelete.id;
+
+  showConfirmMessage(
+    "Suppression",
+    `Voulez-vous vraiment supprimer ${deviceToDelete.id} ?`,
+    async () => {
+      if (deviceToDelete.isCustom) {
+        pendingDeletes.push(deviceToDelete.id);
+        delete pendingCustomDevices[deviceToDelete.id];
+      } else {
+        pendingOverrides[deleteId] = {
+          ...(pendingOverrides[deleteId] || {}),
+          ...deviceToDelete,
+          id: deleteId,
+          hidden: true
+        };
+      }
+
+      removeSwitchDataFromRelatedPcs(deviceToDelete);
+      hideConnectedWires(deleteId);
+
+      popup.style.display = "none";
+      currentSelectedDevice = null;
+
+      redrawOriginalDevicesVisibility();
+      redrawCustomLayer();
+      fillSwitchDropdown();
+      fillSwitchLinkedInput();
+      showMessage("Suppression", "Équipement supprimé. Cliquez sur Enregistrer pour sauvegarder.");
+    }
+  );
+}
+function removeSwitchDataFromRelatedPcs(deletedDevice) {
+  const isSwitch = deletedDevice.id.toLowerCase().includes("switch");
+  if (!isSwitch) return;
+
+  const deletedSwitchId = deletedDevice.id;
+
+  Object.values(customDevicesCache || {}).forEach(device => {
+    if (device.type === "pc" && device.switchName === deletedSwitchId) {
+      pendingCustomDevices[device.id] = {
+        ...device,
+        switchName: "",
+        switchIp: ""
+      };
+    }
+  });
+
+  Object.values(pendingCustomDevices || {}).forEach(device => {
+    if (device.type === "pc" && device.switchName === deletedSwitchId) {
+      pendingCustomDevices[device.id] = {
+        ...device,
+        switchName: "",
+        switchIp: ""
+      };
+    }
+  });
+
+  allDevices.forEach(device => {
+    const currentDevice = getDeviceWithOverride(device);
+
+    if (!currentDevice.id.toLowerCase().startsWith("uc")) return;
+
+    if (currentDevice.switchName === deletedSwitchId) {
+      pendingOverrides[device.id] = {
+        ...currentDevice,
+        switchName: "",
+        switchIp: ""
+      };
+    }
+  });
+}
+function hideConnectedWires(deviceId) {
+  const svg = svgContainer.querySelector("svg");
+  if (!svg) return;
+
+  allEdges
+    .filter(edge => edge.source === deviceId || edge.target === deviceId)
+    .forEach(edge => {
+      const edgeElements = svg.querySelectorAll(`[data-cell-id="${cssspace(edge.id)}"]`);
+
+      edgeElements.forEach(element => {
+        hideSvgElement(element, true);
+      });
+    });
+}
+function redrawOriginalDevicesVisibility() {
+  const svg = svgContainer.querySelector("svg");
+  if (!svg) return;
+
+  allDevices.forEach(device => {
+    const override = {
+      ...(deviceOverridesCache[device.id] || {}),
+      ...(pendingOverrides[device.id] || {})
+    };
+
+    const shouldHide = Boolean(override.hidden);
+
+    const elements = svg.querySelectorAll(`[data-cell-id="${cssspace(device.id)}"]`);
+
+    elements.forEach(element => {
+      hideSvgElement(element, shouldHide);
+    });
+
+    if (shouldHide) {
+      hideTextWithSameContent(svg, device.id, true);
+       hideConnectedWires(device.id);
+    }
+
+    allEdges
+      .filter(edge => edge.source === device.id || edge.target === device.id)
+      .forEach(edge => {
+        const edgeElements = svg.querySelectorAll(`[data-cell-id="${cssspace(edge.id)}"]`);
+
+        edgeElements.forEach(element => {
+          hideSvgElement(element, shouldHide);
+        });
+      });
+  });
+}
+function hideTextWithSameContent(svg, deviceId, shouldHide) {
+  const wanted = normalizeSearchText(deviceId);
+  const textElements = svg.querySelectorAll("text, foreignObject");
+
+  textElements.forEach(element => {
+    const text = normalizeSearchText(element.textContent);
+
+    if (text === wanted) {
+      hideSvgElement(element, shouldHide);
+    }
+  });
+}
+function hideSvgElement(element, shouldHide) {
+  const target = element.closest("g[data-cell-id]") || element.closest("g") || element;
+
+  if (shouldHide) {
+    target.setAttribute("display", "none");
+    target.style.display = "none";
+    target.style.visibility = "hidden";
+    target.style.pointerEvents = "none";
+  } else {
+    target.removeAttribute("display");
+    target.style.display = "";
+    target.style.visibility = "";
+    target.style.pointerEvents = "all";
+  }
+}
+
+
+function drawOverrideLines() {
+  Object.entries({
+    ...deviceOverridesCache,
+    ...pendingOverrides
+  }).forEach(([originalId, device]) => {
+    if (device.hidden) return;
+    if (!device.switchName) return;
+    
+    const originalDevice = allDevices.find(item => item.id === originalId);
+    if (!originalDevice) return;
+
+    const currentDevice = getDeviceWithOverride(originalDevice);
+    if (currentDevice.hidden) return;
+
+    const devicePosition = findOriginalDevicePosition(originalId);
+    const switchPosition = findSwitchPosition(device.switchName);
+
+    if (!devicePosition || !switchPosition) return;
+
+    const isSwitch = currentDevice.id.toLowerCase().includes("switch");
+
+if (isSwitch) {
+  return;
+}
+
+  const switchCablePoint = getSwitchCableSidePoint(switchPosition, devicePosition);
+
+drawLine(
+  devicePosition.x,
+  devicePosition.topY,
+  switchCablePoint.x,
+  switchCablePoint.y,
+  "custom-line"
+);
+  });
+}
+function getSwitchCableSidePoint(switchPosition, pcPosition) {
+  const width = switchPosition.width || 45;
+  const height = switchPosition.height || 32;
+  const insideOffset = 10;
+
+  const left = switchPosition.x - width / 2 + insideOffset;
+  const right = switchPosition.x + width / 2 - insideOffset;
+  const top = switchPosition.y - height / 2;
+  const bottom = switchPosition.y + height / 2;
+
+  const side = pcPosition.x < switchPosition.x ? "left" : "right";
+
+  return {
+    x: side === "left" ? left : right,
+    y: Math.max(top, Math.min(bottom, pcPosition.y))
+  };
+}
+function findOriginalDevicePosition(id) {
+  const svg = svgContainer.querySelector("svg");
+  const shape = svg.querySelector(`[data-cell-id="${cssspace(id)}"]`);
+
+  if (!shape) return null;
+
+  const box = shape.getBBox();
+
+  return {
+    id: id,
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+    topY: box.y,
+    width: box.width,
+    height: box.height
+  };
+}
+
+function getswdetail(device) {
+  return `
+    <h2>Détails du switch</h2>
+    ${detailRow("ID", device.id)}
+    ${detailRow("IP", device.ip)}
+  `;
+}
+
+function getucdetail(device) {
+  return `
+    <h2>Détails du PC</h2>
+    ${detailRow("ID", device.id)}
+    ${detailRow("Nom", device.name)}
+    ${detailRow("IP", device.ip)}
+    ${detailRow("Switch lié", device.switchName)}
+    ${detailRow("IP du switch", device.switchIp)}
+  `;
+}
+
+function detailRow(label, value) {
+  return `
+    <div class="row">
+      <div class="label">${htmlpace(label)}</div>
+      <div class="value">${htmlpace(value || "-")}</div>
+    </div>
+  `;
+}
+
+function closepanel() {
+  popup.style.display = "none";
+  cleardevice();
+}
+
+function cleardevice() {
+  document.querySelectorAll(".selected-device").forEach(element => {
+    element.classList.remove("selected-device");
+  });
+}
+
+function htmlpace(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function cssspace(value) {
+  if (window.CSS && CSS.escape) return CSS.escape(value);
+  return String(value).replace(/["\\]/g, "\\$&");
+}
+
+let panneldrag = false;
+let pannelX = 0;
+let pannelY = 0;
+
+popup.addEventListener("mousedown", event => {
+  if (event.target.id === "closePopup") return;
+
+  panneldrag = true;
+
+  pannelX = event.clientX - popup.offsetLeft;
+  pannelY = event.clientY - popup.offsetTop;
+
+});
+
+document.addEventListener("mousemove", event => {
+  if (!panneldrag) return;
+
+  popup.style.left = `${event.clientX - pannelX}px`;
+  popup.style.top = `${event.clientY - pannelY}px`;
+});
+
+document.addEventListener("mouseup", () => {
+  panneldrag = false;
+});
+async function saveCustomDevice() {
+  clearFormError();
+
+  if (!editMode) {
+    showFormError("Choisissez d’abord Ajouter PC ou Ajouter switch.");
+    return;
+  }
+  if (currentSelectedDevice && deviceForm.style.display === "block") {
+  
+
+ const updatedDevice = {
+  ...currentSelectedDevice,
+  id: currentSelectedDevice.id,
+  name: editMode === "switch" ? "" : deviceNameInput.value.trim(),
+  ip: deviceIpInput.value.trim(),
+  switchName: editMode === "switch" && currentSelectedDevice.isCustom
+    ? switchLinkedInput.value
+    : deviceSwitchIdInput.value,
+  switchIp: editMode === "switch"
+    ? ""
+    : deviceSwitchIpInput.value.trim(),
+  cableType: editMode === "switch" && currentSelectedDevice.isCustom
+    ? getSelectedSwitchCableType()
+    : "reseau"
+};
+  if (currentSelectedDevice.isCustom) {
+    pendingCustomDevices[currentSelectedDevice.id] = updatedDevice;
+  } else {
+const originalId = currentSelectedDevice.originalId || currentSelectedDevice.id;
+pendingOverrides[originalId] = {
+  ...updatedDevice,
+  originalId: originalId
+};  }
+
+  updateRelatedPcsIfSwitchChanged(currentSelectedDevice, updatedDevice);
+
+  deviceForm.style.display = "none";
+  popup.style.display = "none";
+  currentSelectedDevice = null;
+
+  redrawCustomLayer();
+
+  showMessage("Modification", "Modification prête. Cliquez sur Enregistrer pour sauvegarder.");
+  return;
+}
+if (editMode === "switch" && switchNumberExists(switchNumberInput.value, currentSelectedDevice ? currentSelectedDevice.id : "")) {
+  showFormError("Ce numéro de switch existe déjà. Veuillez choisir un autre numéro.");
+  return;
+}
+  const id = buildDeviceId();
+
+  if (!id) {
+    showFormError("L’ID de l’équipement est obligatoire.");
+    return;
+  }
+
+  if (deviceIdExists(id)) {
+    showFormError(editMode === "switch"
+      ? "Ce nom de switch existe déjà. Veuillez choisir un autre nom."
+      : "Cet ID existe déjà. Veuillez choisir un autre ID."
+    );
+    return;
+  }
+
+  pendingDevice = {
+  type: editMode,
+  id: id,
+  name: editMode === "switch" ? "" : deviceNameInput.value.trim(),
+  ip: deviceIpInput.value.trim(),
+  switchName: editMode === "switch" ? switchLinkedInput.value : deviceSwitchIdInput.value,
+  switchIp: deviceSwitchIpInput.value.trim(),
+  cableType: editMode === "switch" ? getSelectedSwitchCableType() : "reseau"
+};
+
+deviceForm.style.display = "none";
+showCursorPreview(editMode);
+
+showMessage(
+  "Placement",
+  editMode === "pc"
+    ? "Placez l’ordinateur où vous voulez, cliquez sur le schéma."
+    : "Placez le switch où vous voulez, cliquez sur le schéma."
+);
+}
+
+function buildDeviceId() {
+  if (editMode === "pc") {
+    const number = pcNumberInput.value.trim().replace(/^UC/i, "").trim();
+
+    if (!number) return "";
+
+    return `UC${number}`;
+  }
+
+  if (editMode === "switch") {
+    const number = switchNumberInput.value
+      .trim()
+      .replace(/^switch\s*SW/i, "")
+      .replace(/^SW/i, "")
+      .replace(/:/g, "")
+      .trim();
+
+    const model = switchModelInput.value.trim();
+
+    if (!number || !model) return "";
+
+    return `switch SW${number}: ${model}`;
+  }
+
+  return "";
+}
+function updateRelatedPcsIfSwitchChanged(oldSwitch, newSwitch) {
+  const isSwitch = oldSwitch.id.toLowerCase().includes("switch");
+
+  if (!isSwitch) return;
+
+  const oldId = oldSwitch.id;
+  const newId = newSwitch.id;
+  const newIp = newSwitch.ip || "";
+
+  Object.values(customDevicesCache || {}).forEach(device => {
+    if (device.type === "pc" && device.switchName === oldId) {
+      pendingCustomDevices[device.id] = {
+        ...device,
+        switchName: newId,
+        switchIp: newIp
+      };
+    }
+  });
+
+  Object.values(pendingCustomDevices || {}).forEach(device => {
+    if (device.type === "pc" && device.switchName === oldId) {
+      pendingCustomDevices[device.id] = {
+        ...device,
+        switchName: newId,
+        switchIp: newIp
+      };
+    }
+  });
+
+  allDevices.forEach(device => {
+    if (device.switchName === oldId) {
+      pendingOverrides[device.id] = {
+        ...getDeviceWithOverride(device),
+        switchName: newId,
+        switchIp: newIp
+      };
+    }
+  });
+}
+function deviceIdExists(id) {
+  const wanted = id.toLowerCase();
+
+  const existsInOriginal = allDevices
+    .map(getDeviceWithOverride)
+    .filter(device => !device.hidden)
+    .some(device => device.id.toLowerCase() === wanted);
+
+  const existsInCustom = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => !pendingDeletes.includes(device.id))
+    .some(device =>
+      device.id && device.id.toLowerCase() === wanted
+    );
+
+  return existsInOriginal || existsInCustom;
+}
+function switchNumberExists(number, ignoredId = "") {
+  const wanted = String(number || "").trim().toLowerCase();
+  const ignored = String(ignoredId || "").trim().toLowerCase();
+
+  if (!wanted) return false;
+
+  const originalSwitches = allDevices
+    .map(getDeviceWithOverride)
+    .filter(device => !device.hidden);
+
+  const customSwitches = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => !pendingDeletes.includes(device.id));
+
+  const allSwitches = [...originalSwitches, ...customSwitches];
+
+  return allSwitches.some(device => {
+    if (!device || !device.id) return false;
+    if (device.id.toLowerCase() === ignored) return false;
+    if (!device.id.toLowerCase().includes("switch")) return false;
+
+    const parts = readSwitchIdParts(device.id);
+    return parts.number.toLowerCase() === wanted;
+  });
+}
+function showCursorPreview(type) {
+  cursorPreviewImage.src = type === "pc" ? "computer.png" : "switch.png";
+  cursorPreviewText.textContent = type === "pc"
+    ? "Placez votre ordinateur"
+    : "Placez votre switch";
+
+  cursorPreview.style.display = "flex";
+}
+
+function hideCursorPreview() {
+  cursorPreview.style.display = "none";
+}
+
+document.addEventListener("mousemove", event => {
+  if (!pendingDevice && !movingDevice) return;
+
+  cursorPreview.style.left = `${event.clientX + 14}px`;
+  cursorPreview.style.top = `${event.clientY + 14}px`;
+});
+
+function loadCustomDevices() {
+  customDevicesRef.on("value", snapshot => {
+    customDevicesCache = snapshot.val() || {};
+    fillSwitchDropdown();
+    redrawCustomLayer();
+  });
+}
+
+function drawCustomDevice(device) {
+  if (!customLayer) return;
+
+  const deviceType = device.type === "switch" ? "switch" : "pc";
+  const devicePosition = getCustomDevicePosition(device);
+
+  if (deviceType === "pc" && device.switchName) {
+  if (!isDeletedOrHiddenSwitch(device.switchName)) {
+    const switchPosition = findSwitchPosition(device.switchName);
+
+    if (switchPosition) {
+      const pcTopY = Number(device.y) - 7.5;
+      drawLine(device.x, pcTopY, switchPosition.x, switchPosition.y, "custom-line");
+    }
+  }
+}
+if (deviceType === "switch") {
+  if (isSpecialIsolatedSwitch(device.id)) {
+  } else if (device.switchName) {
+    if (!isDeletedOrHiddenSwitch(device.switchName)) {
+      const switchPosition = findSwitchPosition(device.switchName);
+
+      if (switchPosition) {
+        const lineClass = device.cableType === "fibre" ? "fiber-line" : "custom-switch-line";
+        drawWireBetweenDevices(devicePosition, switchPosition, lineClass);
+      }
+    }
+  } else {
+    const closestSwitch = findClosestSwitch(device.x, device.y);
+
+    if (closestSwitch && !isSpecialIsolatedSwitch(closestSwitch.id)) {
+      drawWireBetweenDevices(devicePosition, closestSwitch, "custom-switch-line");
+    }
+  }
+}
+
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  group.classList.add("custom-device", deviceType);
+
+  const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  const width = deviceType === "switch" ? 60 : 15;
+  const height = deviceType === "switch" ? 42 : 15;
+
+  hitbox.setAttribute("x", Number(device.x) - width / 2);
+  hitbox.setAttribute("y", Number(device.y) - height / 2);
+  hitbox.setAttribute("width", width);
+  hitbox.setAttribute("height", height);
+  hitbox.setAttribute("fill", "transparent");
+  hitbox.setAttribute("pointer-events", "all");
+
+  group.appendChild(hitbox);
+
+  if (deviceType === "switch") {
+    drawSwitchIcon(group, Number(device.x), Number(device.y));
+  } else {
+    drawPcIcon(group, Number(device.x), Number(device.y));
+  }
+
+  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  text.setAttribute("x", device.x);
+  text.setAttribute("y", Number(device.y) + 14);
+  text.setAttribute("text-anchor", "middle");
+  text.textContent = device.id;
+
+  group.appendChild(text);
+  customLayer.appendChild(group);
+
+  group.addEventListener("click", event => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    cleardevice();
+    group.classList.add("selected-device");
+
+    details({
+      ...device,
+      type: deviceType,
+      isCustom: true
+    });
+  });
+}
+function sameSwitchName(a, b) {
+  return normalizeSwitchText(a) === normalizeSwitchText(b);
+}
+
+function normalizeSwitchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s*:\s*/g, ":")
+    .trim();
+}
+function isSpecialIsolatedSwitch(id) {
+  const specialSwitches = [
+    "switch SW025: HP ARUBA 1930-48G JL685A",
+    "switch SW005: HP 1920-24G JG924A"
+  ];
+
+  return specialSwitches.some(sw =>
+    normalizeSpecialSwitchId(id) === normalizeSpecialSwitchId(sw)
+  );
+}
+
+function normalizeSpecialSwitchId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s*:\s*/g, ":")
+    .trim();
+}
+
+function getCustomDevicePosition(device) {
+  const isSwitch = device.type === "switch";
+
+  return {
+    id: device.id,
+    x: Number(device.x),
+    y: Number(device.y),
+    width: isSwitch ? 45 : 15,
+    height: isSwitch ? 32 : 15
+  };
+}
+
+function drawWireBetweenDevices(fromDevice, toDevice, className) {
+  const start = getSideEdgePoint(fromDevice, toDevice);
+  const end = getSideEdgePoint(toDevice, fromDevice);
+
+  drawLine(start.x, start.y, end.x, end.y, className);
+}
+
+function getSideEdgePoint(fromDevice, toDevice) {
+  const width = fromDevice.width || 45;
+  const height = fromDevice.height || 32;
+
+  const isSwitch = String(fromDevice.id || "").toLowerCase().includes("switch");
+
+  if (isSwitch) {
+    const otherIsLeft = toDevice.x < fromDevice.x;
+
+    return {
+      x: otherIsLeft ? fromDevice.x - width / 2 : fromDevice.x + width / 2,
+      y: fromDevice.y
+    };
+  }
+
+  return {
+    x: fromDevice.x,
+    y: fromDevice.y - height / 2
+  };
+}
+function drawPcIcon(group, x, y) {
+  drawImageIcon(group, "computer.png", x, y, 15, 15);
+}
+
+function drawSwitchIcon(group, x, y) {
+  drawImageIcon(group, "switch.png", x, y, 45, 32);
+}
+
+function drawImageIcon(group, src, x, y, width, height) {
+  const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+
+  image.setAttribute("href", src);
+  image.setAttribute("x", x - width / 2);
+  image.setAttribute("y", y - height / 2);
+  image.setAttribute("width", width);
+  image.setAttribute("height", height);
+
+  group.appendChild(image);
+}
+
+function drawLine(x1, y1, x2, y2, className = "custom-line") {
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+
+  line.setAttribute("class", className);
+  line.setAttribute("x1", x1);
+  line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2);
+  line.setAttribute("y2", y2);
+
+  customLayer.appendChild(line);
+}
+
+
+function findClosestSwitch(x, y) {
+  const svg = svgContainer.querySelector("svg");
+
+  const originalSwitches = allDevices
+    .map(getDeviceWithOverride)
+    .filter(device => !device.hidden)
+    .filter(device => device.id.toLowerCase().includes("switch"))
+    .map(device => {
+      const shape = svg.querySelector(`[data-cell-id="${cssspace(device.id)}"]`);
+
+      if (!shape) return null;
+
+      const box = shape.getBBox();
+
+      return {
+        id: device.id,
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2,
+        width: box.width,
+        height: box.height
+      };
+    })
+    .filter(Boolean);
+
+  const customSwitches = Object.values({
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  })
+    .filter(device => device.type === "switch")
+    .filter(device => !device.hidden)
+    .filter(device => !pendingDeletes.includes(device.id))
+    .filter(device => Number(device.x) !== Number(x) || Number(device.y) !== Number(y))
+    .map(device => ({
+      id: device.id,
+      x: Number(device.x),
+      y: Number(device.y),
+      width: 45,
+      height: 32
+    }));
+
+  const switches = [...originalSwitches, ...customSwitches];
+
+  if (!switches.length) return null;
+
+  return switches
+    .map(sw => ({
+      ...sw,
+      distance: Math.hypot(sw.x - x, sw.y - y)
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+}
+
+function findSwitchPosition(switchId) {
+  const customDevices = {
+    ...customDevicesCache,
+    ...pendingCustomDevices
+  };
+
+  pendingDeletes.forEach(id => {
+    delete customDevices[id];
+  });
+
+  const movedOrCustomSwitch = Object.values(customDevices).find(device =>
+    device.type === "switch" &&
+    device.id === switchId &&
+    !device.hidden
+  );
+
+  if (movedOrCustomSwitch) {
+    return {
+      id: movedOrCustomSwitch.id,
+      x: Number(movedOrCustomSwitch.x),
+      y: Number(movedOrCustomSwitch.y),
+      width: 45,
+      height: 32
+    };
+  }
+
+  const originalDevice = allDevices.find(device => device.id === switchId);
+  if (!originalDevice) return null;
+
+  const currentSwitch = getDeviceWithOverride(originalDevice);
+
+  if (currentSwitch.hidden) {
+    return null;
+  }
+
+  const svg = svgContainer.querySelector("svg");
+  const originalSwitch = svg.querySelector(`[data-cell-id="${cssspace(switchId)}"]`);
+
+  if (!originalSwitch) return null;
+
+  const box = originalSwitch.getBBox();
+
+  return {
+    id: switchId,
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+    width: box.width,
+    height: box.height
+  };
+}
+
+
+</script>
+
+</body>
+</html>

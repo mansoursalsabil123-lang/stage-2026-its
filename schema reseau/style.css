@@ -1,0 +1,584 @@
+body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eef2f6;
+      overflow: hidden;
+    }
+
+    #viewer {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+  #svgContainer {
+  display: inline-block;
+  margin: 80px 20px 20px 20px ;
+  background: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+
+
+    #closePopup {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: black;
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    .row {
+      margin-bottom: 10px;
+      padding: 9px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #f7f8fa;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #667085;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .value {
+      font-size: 14px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .selected-device {
+      outline:4px solid #80a4c9;
+      outline-offset:1px;
+    }
+
+#popup {
+    display: none;
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    width: 330px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 12px 35px rgba(75,44,62,.35);
+    padding: 16px;
+    z-index: 9999;
+    cursor: move;
+}
+#popupContent {
+  cursor: default;
+}
+#loginScreen,
+#changePasswordBox {
+  position: fixed;
+  inset: 0;
+  background: #eef2f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+
+#changePasswordBox {
+  display: none;
+}
+
+.loginBox {
+  width: 320px;
+  background: white;
+  padding: 22px;
+  border-radius: 10px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+}
+.idBox, 
+#switchIdBox {
+  display: none;
+  align-items: center !important;
+  height: 40px !important; 
+  padding: 0 12px !important;
+  border: 1px solid #767676 !important; 
+  border-radius: 4px !important; 
+  background-color: #fff !important;
+  box-sizing: border-box !important;
+}
+
+.idBox[style*="display: flex"],
+#switchIdBox[style*="display: flex"],
+.idBox[style*="display: inline-flex"],
+#switchIdBox[style*="display: inline-flex"] {
+  display: flex ;
+  flex: 1 !important;
+}
+
+/* --- LABELS ET ALIGNEMENTS --- */
+.form-group {
+  display: flex ;
+  flex-direction: row ; 
+  align-items: center ;
+  gap: 10px ;
+  margin-bottom: 5px ;
+  width: 100% ;
+}
+
+.field-label {
+  font-family: sans-serif;
+  font-size: 14px; 
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap !important;
+}
+
+
+.idBox input,
+#switchIdBox input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 5px !important;
+  margin: 0 !important;
+  height: 100% !important;
+  font-size: 14px !important;
+  font-family: sans-serif !important;
+  color: #595F65 !important;
+}
+
+
+#switchNumberInput {
+  width: 50px !important;
+  text-align: center !important;
+}
+
+#switchModelInput {
+  flex: 1 !important;
+}
+.loginBox input,
+.loginBox button {
+  width: 100%;
+   margin-top: 10px;
+   padding: 10px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+   box-sizing: border-box;
+}
+.loginBox button:hover {
+  background: #7daddc61;
+}
+
+.showPassword {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  margin: 15px 0;
+  white-space: nowrap;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#showPasswordInput {
+  width: auto;
+  margin: 0 0 0 5px;
+  order: 2;
+
+}
+#editDeviceBtn{
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: rgba(226, 221, 221, 0.868);
+  border-radius: 6px;
+  cursor: pointer;
+
+}
+#moveDeviceBtn{
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: rgba(226, 221, 221, 0.868);
+  border-radius: 6px;
+  cursor: pointer;
+
+}
+#editDeviceBtn:hover{
+  background: #7daddc61;
+}
+#moveDeviceBtn:hover{
+  background: #7daddc61;
+}
+.radioLine {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.radioLine {
+  display: flex !important;
+  gap: 12px !important;
+  margin: 8px 0 !important;
+}
+
+.radioLine label {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  padding: 10px 12px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: 0.2s ease !important;
+}
+
+.radioLine label:hover {
+  border-color: #767676 !important;
+  background: #eef4ff !important;
+}
+
+.radioLine input {
+  width: auto !important;
+  margin: 0 !important;
+  accent-color: #767676 !important;
+  order: -1 !important;
+  flex-shrink: 0 !important;
+}
+
+.radioLine label:has(input:checked) {
+  border-color: #767676 !important;
+  background: #dbeafe !important;
+  color: #060709 !important;
+}
+.fiber-line {
+  stroke: #B5C6DE;
+  stroke-width: 1;
+}
+#showNewPasswordInput {
+  width: auto;
+  margin: 0 0 0 5px;
+  order: 2;
+}
+
+
+#editToolbar button {
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#editToolbar #saveAllBtn{
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: #7daddc61;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#editToolbar #saveAllBtn:hover {
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#editToolbar button:hover {
+  background: #7daddc61;
+}
+#editToolbar button, 
+#saveDeviceBtn {
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease; /* Optionnel : pour un survol plus fluide */
+}
+
+
+
+#saveDeviceBtn:hover {
+  background: #7daddc61;
+}
+
+#closeDeviceFormBtn {
+  padding: 9px 12px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease; /* Pour un survol fluide */
+}
+
+#editToolbar button:hover, 
+#saveDeviceBtn:hover,
+#closeDeviceFormBtn:hover {
+  background: #7daddc61;
+}
+
+#deviceSwitchIpInput[readonly] {
+  background: #f1f1f1;
+  cursor: not-allowed;
+}
+#deviceForm {
+  display: none;
+  position: fixed;
+  left: 20px;
+  top: 75px;
+  width: 310px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  z-index: 9998;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22);
+}
+.form-group {
+  display: flex ;
+  flex-direction: row ; 
+  align-items: center ; 
+  gap: 10px ;           
+  margin-bottom: 15px ;
+  width: 100%;
+}
+
+.field-label {
+  font-family: sans-serif;
+  font-size: 18px;
+  margin-top: 2px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap !important; 
+}
+
+#switchIdBox span {
+  font-family: sans-serif !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  color: #80A4C9 !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+}
+
+#switchIdBox input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 5px !important; 
+  margin: 0 !important;
+  height: 100% !important;
+  font-size: 14px !important;
+  font-family: sans-serif !important;
+  color: #495057 !important;
+}
+
+#switchNumberInput {
+  width: 50px !important; /* Largeur fixe restreinte pour le numéro (ex: 030) */
+  text-align: center !important; /* Centre le numéro pour un rendu plus propre */
+}
+.idBox .prefix {
+  font-family: sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  color: #5d9bd8 !important;
+  margin-right: 5px; 
+  user-select: none;
+}
+
+.idBox input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  font-family: sans-serif;
+  color: #495057;
+}
+
+#closePopup:hover {
+    color: #80a4c9;
+    cursor: pointer;
+}
+
+
+#placementMessage {
+  font-size: 13px;
+  color: #667085;
+}
+#customLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+#loginMessage {
+    color: #B85450;
+    font-weight: bold; /* Optionnel : pour rendre le texte plus visible */
+}
+#changeMessage{
+  color: #B85450;
+  font-weight: bold;
+}
+.custom-device {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.custom-device image,
+
+.custom-switch-line {
+  stroke: #B85450;
+  stroke-width:1;
+  pointer-events: none;
+}
+
+.custom-device text {
+  font-size: 8px;
+  font-family: Arial, sans-serif;
+  pointer-events: none;
+}
+
+.custom-line {
+  stroke: #6F6F6F;
+  stroke-width: 0.65;
+  pointer-events: none;
+}
+#deviceForm input,
+#deviceForm select,
+#deviceForm button {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 9px;
+  padding: 9px;
+}
+#deleteDeviceBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  background: #80a4c9;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#cursorPreview {
+  display: none;
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 6px 9px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+#cursorPreview img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+#editToolbar {
+  position: fixed;
+  left: 20px;
+  top: 10px;
+  display: none;
+  gap: 8px;
+  z-index: 9998;
+  align-items: center;
+  background: white;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+
+.idBox span {
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+#deviceFormMessage {
+  color: #B85450;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+#searchBox {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+#messageModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 100000;
+  align-items: center;
+  justify-content: center;
+}
+
+#messageBox {
+  width: 360px;
+  background: white;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+
+#messageBox h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+#messageBox p {
+  margin: 0 0 18px;
+  color: #555;
+  line-height: 1.4;
+}
+
+#messageOkBtn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 7px;
+  background: #80a4c9;
+  color: white;
+  cursor: pointer;
+}
+
+#searchInput {
+  width: 240px;
+  padding: 8px;
+}
+
+#searchBtn {
+  padding: 8px 12px;
+}
